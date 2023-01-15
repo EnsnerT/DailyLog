@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="de">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <title>Daily Log</title>
+        <style>
+            * { outline: solid 0.10rem rgba(255, 113, 113, 0.5); }
+            *:hover {
+                outline: solid 0.10rem rgba(166, 255, 57, 0.5);
+            }
+
+            :root {
+                /* CSS - Color */
+                --t-bg:  #d3d3d3; /* Tasks */
+                --m-bg:  #a9a9a9; /* Menu */
+                --mb-bg: #d3d3d3; /* Menu Button*/
+
+                --p-bg:  #0008;   /* Background Popup (Alpha: 50%) */
+                --p-box: #ffffff; /* Popup Box (alpha: 100%) */
+                --p-ob:  #4873ff; /* Popup Ok button */
+                --p-cb:  #9fb1ee; /* Popup Cancel button */
+
+                --r-p:   #3bd1ff; /* Run-button Primary */
+                --r-p2:  #05c5ff; /* Run-button Primary hover */
+                --r-s:   #ffffff; /* Run-button Secondary*/
+
+                --s-p:   #ffb5b5; /* Stop-button Primary */
+                --s-p2:  #ff7c7c; /* Stop-button Primary hover */
+                --s-s:   #ffffff; /* Stop-button Secondary*/
+            }
+            * {
+                font-family: 'consolas';
+            }
+            .list > div {
+                display: block;
+                width: calc(100% - (2 * 10px));
+                border: 0px transparent;
+                border-radius: 10px;
+                /* padding: 10px; */
+                background: var(--t-bg);
+                margin: 5px 10px;
+                overflow:hidden;
+            }
+            .list > div > span {
+                width: 50%;
+                display: inline-block;
+                margin: 10px 10px;
+            }
+            .list > div > button {
+                border: 0px solid transparent;
+                /* border: 1px solid lightgrey; */
+                /* border-radius: 10px; */
+                font-size: 15px;
+                width: 100px;
+                /* background: transparent; */
+                /* margin-right: 20px; */
+                height: 40px;
+            }
+            /* .list > div > button:hover {
+                border: 1px solid black;
+            } */
+            .button-run:hover {
+                --light: var(--r-p2);
+            }
+            .button-run {
+                animation: progress 1s linear;
+                animation-iteration-count: infinite;
+                --light: var(--r-p);
+                --white: var(--r-s);
+                background: repeating-linear-gradient(
+                    45deg,
+                    var(--light),
+                    var(--light) 10px,
+                    var(--white) 10px,
+                    var(--white) 20px
+                );
+                background-size: 28px 28px;
+            }
+            .button-stop:hover{
+                --light: var(--s-p2);
+            }
+            .button-stop {
+                /* animation: progress 1s linear; */
+                /* animation-iteration-count: infinite; */
+            /* gray */
+                /* --light: rgb(189, 189, 189); */
+            /* red */
+                --light: var(--s-p);
+                --white: var(--s-s);
+                background: repeating-linear-gradient(
+                    45deg,
+                    var(--light),
+                    var(--light) 10px,
+                    var(--white) 10px,
+                    var(--white) 20px
+                );
+                background-size: 28px 28px;
+            }
+            @keyframes progress {
+                from {background-position-x: 0px;}
+                to {background-position-x: 28px;}
+            }
+
+            div.menu {
+                display: inline-flex;
+                width: calc(100% - (2 * 10px));
+                border: 0px transparent;
+                border-radius: 10px;
+                background: var(--m-bg);
+                margin: 5px 10px;
+                overflow: hidden;
+            }
+            div.menu > button {
+                border-top: 0px transparent;
+                border-right: 0px transparent;
+                border-bottom: 0px transparent;
+                border-left-color: black;
+                border-left-style: outset;
+                border-left-width: 1px;
+                background: var(--mb-bg);
+                font-size: 18px;
+                /* height:40px; */
+                padding:10px;
+                min-width: 100px;
+            }
+            div.menu > button:first-child {
+                
+                border-top-left-radius: 10px;
+                border-bottom-left-radius: 10px;
+                border-left: 0px transparent;
+            }
+            /* #region Popup */
+            div.popup {
+                position: fixed;
+                top:0px;
+                left:0px;
+                width:100%;
+                height: 100%;
+                background: var(--p-bg);
+            }
+            div.popup > .box {
+                /* --height: 20%; */
+                --width: max(80%,400px);
+                display: inline-block;
+                /* height: var(--height); */
+                width: var(--width);
+                background: var(--p-box);
+                /* margin:auto; */
+                position: relative;
+                /* top: calc(50% - (var(--height) / 2) - 20px); */
+                top: 50%;
+                left: calc(50% - (var(--width) / 2) - 20px);
+                padding: 20px;
+                border-radius: 20px;
+                transform: translateY(-50%);
+            }
+            div.popup > .box > .title {
+                text-align: center;
+            }
+            div.popup > .box > .text {
+                text-align: center;
+                width: calc(100% - (2 * 7px));
+                padding: 2px 5px;
+                font-size: 16px;
+
+            }
+            div.popup > .box > .ok_button {
+                --color: var(--p-ob);
+                border: 0px transparent;
+                background: var(--color);
+                float:right;
+                margin:5px;
+                border-radius: 10px;
+                font-size: 18px;
+            }
+            div.popup > .box > .cancel_button {
+                --color: var(--p-cb);
+                border: 0px transparent;
+                background: var(--color);
+                float:right;
+                margin:5px;
+                border-radius: 10px;
+                font-size: 18px;
+            }
+            /* #endregion Popup */
+            body {
+                margin: 0px;
+                background: #222;
+            }
+
+        </style>
+    </head>
+    <body>
+        <div class="popup" style="visibility: hidden;" id="popup">
+            <div class="box">
+                <h3 class="title">Titel</h3>
+                <input type="text" class="text" value="value"><br>
+                <input type="button" class="cancel_button" value="Cancel">
+                <input type="button" class="ok_button" value="Apply">
+            </div>
+        </div>
+        <div class="menu">
+            <button onclick="Add()">Add</button>
+            <button onclick="RemoveAll()">Remove All</button>
+        </div>
+        <div class="list">
+            <!-- <div class="noDelete"> -->  <!-- = baseElement -->
+                <!-- <span>Pause</span>
+                <input type="hidden" value="0">
+                <button class="time">00:00:00</button>
+            </div> -->
+        </div>
+        <script src="./script.js" type="text/javascript"></script>
+    </body>
+</html>
