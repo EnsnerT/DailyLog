@@ -36,17 +36,20 @@
                 font-family: 'consolas';
             }
             .list > div {
-                display: block;
+                display: flex;
                 width: calc(100% - (2 * 10px));
                 border: 0px transparent;
                 border-radius: 10px;
                 /* padding: 10px; */
                 background: var(--t-bg);
                 margin: 5px 10px;
-                overflow:hidden;
+                overflow: hidden;
+                flex-wrap: nowrap;
+                flex-direction: row;
             }
             .list > div > span {
-                width: 50%;
+                min-width: 50%;
+                flex-grow: 1;
                 display: inline-block;
                 margin: 10px 10px;
             }
@@ -58,7 +61,7 @@
                 width: 100px;
                 /* background: transparent; */
                 /* margin-right: 20px; */
-                height: 40px;
+                min-height: 40px;
             }
             /* .list > div > button:hover {
                 border: 1px solid black;
