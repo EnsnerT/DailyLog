@@ -352,8 +352,8 @@ class watch {
             let old_name = R.name;
             let new_name = await popup('Neuer Name', R.name, 'Speichern', 'Abbrechen'); // this waits till the user does sommething
             if (new_name != '') {
-                if(new_name.match(/([+-]\w+)/g)!=null) {
-                    let spliter = Array.from(new_name.matchAll(/(.*)([+-]\w+)/g)); // [<full>,<textOnly>,<modifierOnly>]
+                if(new_name.match(/([+-]\d+)$/gm)!=null) {
+                    let spliter = Array.from(new_name.matchAll(/(.*)([+-]\d+)$/gm)); // [<full>,<textOnly>,<modifierOnly>]
                     new_name = spliter[0][1];
                     let timeDifference = parseInt(spliter[0][2]);
                     if(timeDifference == NaN){ timeDifference = 0; }
