@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -34,6 +34,9 @@
             }
             * {
                 font-family: 'consolas';
+            }
+            button {
+                cursor: pointer;
             }
             .list > div {
                 display: flex;
@@ -194,11 +197,16 @@
                 margin: 0px;
                 background: #222;
             }
+            h3.nojs {
+                text-align: center;
+                margin-left: auto;
+                margin-right: auto;
+            }
 
         </style>
     </head>
     <body>
-        <div class="popup" style="visibility: hidden;" id="popup">
+        <div class="popup" style="visibility: hidden;" id="popup"> <!-- modified by JS -->
             <div class="box">
                 <h3 class="title">Titel</h3>
                 <input type="text" class="text" value="value"><br>
@@ -206,17 +214,10 @@
                 <input type="button" class="ok_button" value="Apply">
             </div>
         </div>
-        <div class="menu">
-            <button onclick="Add()">Add</button>
-            <button onclick="RemoveAll()">Remove All</button>
+        <div class="menu"> <!-- Modified by JS -->
+            <h3 class="nojs">To use this Tool, you must have Javascript Enabled</h3>
         </div>
-        <div class="list">
-            <!-- <div class="noDelete"> -->  <!-- = baseElement -->
-                <!-- <span>Pause</span>
-                <input type="hidden" value="0">
-                <button class="time">00:00:00</button>
-            </div> -->
-        </div>
+        <div class="list"></div> <!-- Modified by JS -->
         <script src="./script.js" type="text/javascript"></script>
     </body>
 </html>

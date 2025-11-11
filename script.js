@@ -1,469 +1,411 @@
-// #region Settings
-
-const global_storage = "ch_thomas_timer";
-
-// #endregion
-let timers = [];
-window.onbeforeunload = save;
-document.onreadystatechange = load;
-
-async function sleep(timeout = 1000) {
-    let promise = new Promise(
-        async (resolve) => 
-        {
-            setTimeout(
-                () => {
-                    resolve(true);
-                },
-                timeout
-            );
-        }
-    );
-    await promise;
-}
 /**
- * Shows a Custom Alert
- * Popup can not be twice open.
- * @param {string} title Title from the Alert
- * @param {string} def_val Default Value (Leave Empty for a 'ok'/'cancel' input)
- * @param {string} ok_name OK-button label (Leave Empty for no 'ok')
- * @param {string} cancel_name Cancel-button label (Leave Empty for no 'cancel')
-*/
-async function popup(title = null, def_val = null, ok_name = "Ok", cancel_name = null) {
-    let popup = document.getElementById("popup");
-    if (popup.style.visibility == "visible") // already in use
+ * @version 1.3 (11.11.2025)
+ * @author ensnerT (2025) https://github.com/EnsnerT
+ * */
+(function (ctx){
+    /* @formatter:off */
+    function extendObject(b,e){return Object.defineProperties(b,Object.fromEntries(e.map(function(i){return Object.entries(Object.getOwnPropertyDescriptors(i));}).reduce(function(p,c){return(c.forEach(function(d){p.push(d);})),p;},[])));}
+    /* define : (namespace, super, constructorFunction, prototype/classMethods, universal/staticMethods). */
+    function defineClass(n,s,c,p,u){u=extendObject(u||{},[Object.fromEntries(Object.entries(s||{})),{'super':s}]);extendObject((n[c.name]=extendObject(c,[u||{}])).prototype,[p||{},s&&Object.fromEntries(Object.entries(s.prototype))||{},Object.defineProperty({},'static',{get:function(){return c;},set:function(v){}})])['super']=extendObject((s||function(){}),[s&&s.prototype||{}]);}
+    function _element(type,props,childs){var e=ctx.document.createElement(type);for(var key in props){e.setAttribute(key,props[key]);}for(var i in childs){e.appendChild(childs[i]);}return e;}
+    function _text(content){return ctx.document.createTextNode(content);}
+    /* @formatter:on */
+
+    var API = {};
+
     {
-        await new Promise(async (resolve) => 
-            {
-                while (popup.style.visibility == "visible") 
-                {
-                    await sleep(500);
-                }
-                resolve(true);
-            }
-        )
-    }
-
-    if (title != null) {
-        popup.querySelector(".title").style.visibility = "inherit";
-        popup.querySelector(".title").innerText = title;
-    } else {
-        popup.querySelector(".title").style.visibility = "hidden";
-    }
-
-    if (def_val != null) {
-        popup.querySelector(".text").style.visibility = "inherit";
-        popup.querySelector(".text").value = def_val;
-    } else {
-        popup.querySelector(".text").style.visibility = "hidden";
-    }
-
-    if (cancel_name != null) {
-        popup.querySelector(".cancel_button").style.visibility = "inherit";
-        popup.querySelector(".cancel_button").value = cancel_name;
-    } else {
-        popup.querySelector(".cancel_button").style.visibility = "hidden";
-    }
-
-    if (ok_name != null) {
-        popup.querySelector(".ok_button").style.visibility = "inherit";
-        popup.querySelector(".ok_button").value = ok_name;
-    } else {
-        popup.querySelector(".ok_button").style.visibility = "hidden";
-    }
-
-    popup.style.visibility = "visible";
-    if (def_val != null){
-        popup.querySelector(".text").focus() /* Fokusieren */
-    }
-
-    let click = await new Promise(
-        (resolve) => {
-            kd = function(ok, cancel) {
-                return (e) => {
-                    if (e.keyCode == 13 && ok) // enter = ok
-                    {
-                        a({ target: popup.querySelector(".ok_button") })
-                    }
-                    if (e.keyCode == 27 && cancel) // esc = cancel
-                    {
-                        a({ target: popup.querySelector(".cancel_button") })
-                    }
-                }
-            } (
-                ok_name != null,
-                cancel_name != null
-            )
-            a = (R) => { 
-                // console.log(R);
-                popup.querySelector(".ok_button").removeEventListener('click',a);
-                popup.querySelector(".cancel_button").removeEventListener('click', a);
-                document.removeEventListener('keydown',kd);
-                return resolve(R);
-            }
-            popup.querySelector(".ok_button").addEventListener('click', a);
-            popup.querySelector(".cancel_button").addEventListener('click', a);
-            document.addEventListener('keydown', kd);
-            
-        }
-    );
-
-    let value = undefined;
-    if (click.target.classList.value == "ok_button") { // OK-clicked
-        if (def_val != null) { // text was a option
-            value = popup.querySelector(".text").value;
-        } else 
-        if (cancel_name != null) { // cancel was a option
-            value = true;
-        } else { // default
-            value = true;
-        }
-    } else 
-        if (click.target.classList.value == "cancel_button") { // Cancel-clicked
-        if (def_val != null) { // text was a option
-            value = def_val;
-        } else
-        if (ok_name != null) { // ok was a option
-            value = false;
-        } else { // default
-            value = false;
-        }
-    } else {
-        console.warn('what did you click?');
-    }
-    popup.style.visibility = "hidden";
-    return value;
-}
-/*  
-    Await makes the Promise wait, and then Returns directly the Value
-    Await & Promise: [Promise]
-        await new Promise( // new Promise (waits till 'resolve()' is called inside this promise)
-            async (resolve, reject)=>
-            {
-                while(popup.style.visibility == "visible"){
-                    await sleep(500); // waits 500 ms, then continues
-                }
-                resolve(); // continues at the Promise
-            }
-        )
-    Value in a other function: [Closure Function]
-        return function (R)
-        {
-            return function()
-            {
-                console.log(R) // 'value'
-            }
-        }
-        ('value')
-*/
-
-async function test() {
-    let a = await popup(
-        "test-title", 
-        "test-value", 
-        "test-ok", 
-        "test-cancel");
-    console.log(`> Value is : %c'%s'`, 'color:red', a);
-
-    a = await popup(
-        "Löschen?",
-        null,
-        "Ja",
-        "Nein");
-    console.log(`> Value is : %c'%s'`, 'color:red', a);
-}
-
-function getNextUnique() {
-    let next = 0;
-    if (timers.length != 0) {
-        next = timers.reduce(
-            (n, { id }) => { // '{ ... }' object ; '{ xxx }' value xxx in object
-                return (n < id ? id : n) 
+        API.i18n = {
+            'de': {
+                'watch.name.new': 'Neuer Name',
+                'watch.name.save': 'Speichern',
+                'watch.name.cancel': 'Abbrechen',
+                'watch.delete.title': 'Löschen?',
+                'watch.delete.confirm': 'Ja',
+                'watch.delete.cancel': 'Nein',
+                'menu.button.add': 'Neu',
+                'menu.button.removeAll': 'Alle Löschen'
             },
-            0 // start value
-        );
-    }
-    return next + 1;
-}
-
-function Add() {
-    timers.push(
-        new watch(
-            { 
-                "name": "New timer", 
-                "start": null, 
-                "id": getNextUnique(), 
-                "mode": 0 
+            'en': {
+                'watch.name.new': 'New Name',
+                'watch.name.save': 'Save',
+                'watch.name.cancel': 'Cancel',
+                'watch.delete.title': 'Delete?',
+                'watch.delete.confirm': 'Yes',
+                'watch.delete.cancel': 'No',
+                'menu.button.add': 'Add',
+                'menu.button.removeAll': 'Remove All'
             }
-        )
-    );
-    save();
-}
-function RemoveAll() {
-    let rly = window.confirm("Sure?");
-    if (rly == true) {
-        timers.map(
-            (e) => e.dispose()
-        );
-    }
-}
-
-function getClass(e) {
-    return e.__proto__.constructor.name;
-}
-
-// stopwatch
-let watches = () => {
-    return document.querySelectorAll("div.list > div");
-};
-let list = document.querySelector("div.list");
-
-let intervalTimer = setInterval(
-    () => {
-        timers.map(
-            (e) => {
-                e.display(false)
-            }
-        ) 
-    }, 
-    500
-);
-
-function generateModel(info) {
-    let div = document.createElement('div');
-    div.innerHTML = 
-    '<button class="time">00:00:00</button>'
-    +'<span>' + info.name + '</span>'
-    +'<input type="hidden" value="' + info.id + '">'
-    +'<button class="rename">Edit</button>';
-    list.append(div);
-    return (
-        function (e) { 
-            return e.item(e.length - 1) 
-        }(list.children)
-    );
-}
-let MODES = { IDLE: 0, RUN: 1 };
-// #region watch
-class watch {
-    baseElement = null;
-    id = null;
-    start = null;
-    end = null;
-    mode = MODES.IDLE;
-    name = "";
-    export = true;
-    constructor(element) {
-        if(element == null) {return null}
-        if (getClass(element) == "Object") {
-            /* this.id = element.id; */
-            this.id = getNextUnique();
-            this.start = element.start;
-            this.end = element.end;
-            this.mode = element.mode;
-            this.name = element.name;
-            this.baseElement = generateModel(element);
-        } else {
-            this.baseElement = element;
-            this.id = element.querySelector("input[type=hidden]").value;
+        };
+        API.lang = 'en';/*default lang*/
+        function identity(e) {
+            return e;
         }
-        (
-            function (R) {
-                R.baseElement.querySelector("button.time").addEventListener('click', R.click.bind(R));
-                R.baseElement.querySelector("button.time").addEventListener('contextmenu', R.reset.bind(R));
-                R.baseElement.querySelector("button.rename").addEventListener('click', R.editName.bind(R));
-            }(this)
-        );
-        this.update();
-        this.display(true);
-        // save()
-    }
-    dispose() {
-        if (
-            this.mode == MODES.IDLE && // timer is in IDLE
-            this.start == null && // IS Reseted
-            this.end == null // same
-        )
-        {
-            this.export = false;
-            this.baseElement.outerHTML = "";
-            save()
-            return true;
-        } else {
+
+        function lanugageValid(tag) {
+            if (tag in API.i18n) return tag;
+            let ltag = tag.split("-")[0];
+            if (ltag in API.i18n) return ltag;
             return false;
         }
-    }
-    isDisposable() {
-        return (
-            this.mode == MODES.IDLE && // timer is in IDLE
-            this.start == null && // IS Reseted
-            this.end == null // same
-        )
-    }
-    equals(e) {
-        return (
-            e == this.baseElement || e == this.id
-        );
-    }
-    update() {
-        switch (this.mode) {
-            case MODES.RUN:
-                this.baseElement.querySelector("button.time").classList.value = "time button-run";
-                break;
-            default:
-            case MODES.IDLE:
-                this.baseElement.querySelector("button.time").classList.value = "time button-stop";
-                break;
+
+        if (typeof ctx.navigator !== 'undefined' && typeof ctx.navigator.languages !== 'undefined') {
+            let validLangTags = new Array(ctx.navigator.languages).flatMap(identity).map(lanugageValid).filter(identity);
+            if (validLangTags.length > 0) {
+                API.lang = validLangTags[0];
+            }
+        }
+        ctx.document.documentElement.lang=API.lang;
+        API.t = function (key) {
+            return API.i18n[API.lang][key];
         }
     }
-    click() {
-        if (this.mode == MODES.IDLE) { /* notruning */
-            let time;
-            if ((this.end || null) == null)
-                time = Date.now();
-            else
-                time = (Date.now() - (this.end - this.start + 0));
-            this.end = null;
-            this.start = time;
-            this.mode = MODES.RUN;
-        } else {/* runs */
-            let time = new Date();
-            this.end = time.getTime();
-            this.mode = MODES.IDLE;
+
+    API.sleep = async function sleep(timeout){
+        if (timeout === undefined) timeout=1000;
+        await new Promise(async function processor(res){
+            setTimeout(res,timeout);
+        });
+    };
+
+    API.getSubElementAndHideIfNotDefined = function getSubElementAndHideIfNotDefined(base,selector,attribute,value){
+        var targetElement = base.querySelector(selector);
+        if (targetElement !== undefined && value !== undefined) {
+            targetElement.style.visibility = "inherit";
+            targetElement[attribute] = value;
+        } else if (targetElement !== undefined && value === undefined){
+            targetElement.style.visibility = "hidden";
+            targetElement[attribute] = "";
         }
-        this.update();
-        save()
-    }
-    reset(e) {
-        try { e.preventDefault() } catch (e) { };
-        if (this.mode == MODES.IDLE) {
-            this.start = null;
-            this.end = null;
+        return targetElement;
+    };
+
+    API.Popup = async function Popup(title, default_value, ok_text, cancel_text){
+        // Note: the popup does not create a new popup, but instead modifies one specific popup
+        if (typeof ctx["document"] !== "object"){
+            throw new Error("document object not found");
         }
+        var popupElement = ctx.document.getElementById("popup");
+
+        while(popupElement.style.visibility === "visible")await API.sleep(500);
+
+        API.getSubElementAndHideIfNotDefined(popupElement,".title","innerText",title);
+        var e_text = API.getSubElementAndHideIfNotDefined(popupElement,".text","value",default_value);
+        var e_cancel = API.getSubElementAndHideIfNotDefined(popupElement,".cancel_button","value",cancel_text);
+        var e_ok = API.getSubElementAndHideIfNotDefined(popupElement,".ok_button","value",ok_text);
+
+        popupElement.style.visibility = "visible";
+        if (default_value !== undefined){
+            e_text.focus(); /* auto focus */
+        } else {
+            /* Fix: would not remove the focus from certain elements. could cause double calls */
+            if(ctx.document.activeElement){
+                ctx.document.activeElement.blur();
+            }
+        }
+
+        var aborter = new AbortController();
+        var click = await new Promise(function resolver(resolve){
+            var resolveWith = function (returnValue){
+                aborter.abort("finished");
+                return resolve(returnValue);
+            };
+            var keyDownListener = (function keyListener(ok_enable, cancel_enable){
+                return function (evt){
+                    if (ok_enable && evt.keyCode === 13){
+                        resolveWith({ target:e_ok });
+                    }
+                    if (cancel_enable && evt.keyCode === 27){
+                        resolveWith({ target:e_cancel });
+                    }
+                };
+            })(ok_text !== undefined, cancel_text !== undefined);
+            e_ok.addEventListener('click',resolveWith,{'signal':aborter.signal});
+            e_cancel.addEventListener('click',resolveWith,{'signal':aborter.signal});
+            document.addEventListener('keydown',keyDownListener,{'signal':aborter.signal});
+        });
+        var value=undefined;
+        console.log(click);
+        if (click.target.classList.contains("ok_button")){
+            if(default_value !== undefined){
+                value=e_text.value;
+            } else {
+                value = true;
+            }
+        } else if (click.target.classList.contains("cancel_button")){
+            if(default_value!==undefined){
+                value = default_value;
+            } else {
+                value = false;
+            }
+        } else {
+            console.warn("What did you click?");
+        }
+        popupElement.style.visibility = "hidden";
+        return value;
+    };
+
+    defineClass(API, null, function Abortable(){this.aborter=new AbortController();},{signal:function(){return this.aborter.signal;},abort:function(){this.aborter.abort("stopped");}},{});
+
+    defineClass(API, API.Abortable, function Watch(opts){
+        this.super();
+        if(opts instanceof Element){
+            this.baseElement = opts;
+            this.id = opts.querySelector("input[type=hidden]").value;
+            this.mode = this.static.MODES.IDLE;
+        } else if (typeof opts === 'object') {
+            this.id=opts.id;
+            this.start=opts.start;
+            this.end=opts.end;
+            this.mode=opts.mode;
+            this.name=opts.name;
+            this.baseElement=this.static.generateModel(opts);
+        }
+        this.baseElement.querySelector('button.time').addEventListener('click',this.h_click.bind(this),{'signal':this.signal()});
+        this.baseElement.querySelector('button.time').addEventListener('contextmenu',this.h_reset.bind(this),{'signal':this.signal()});
+        this.baseElement.querySelector('button.rename').addEventListener('click',this.h_editName.bind(this),{'signal':this.signal()});
         this.update();
         this.display(true);
-        save()
-    }
-    editName() {
-        // new Popup here 
-        // if (this.baseElement) {
-        // }
-        (async (R) => {
-            let old_name = R.name;
-            let new_name = await popup('Neuer Name', R.name, 'Speichern', 'Abbrechen'); // this waits till the user does sommething
-            if (new_name != '') {
-                if(new_name.match(/([+-]\d+)$/gm)!=null) {
-                    let spliter = Array.from(new_name.matchAll(/(.*)([+-]\d+)$/gm)); // [<full>,<textOnly>,<modifierOnly>]
-                    new_name = spliter[0][1];
-                    let timeDifference = parseInt(spliter[0][2]);
-                    if(timeDifference == NaN){ timeDifference = 0; }
-                    if(R.start == null){
-                        R.start = 1;
-                        R.end = (timeDifference*60000)+1;
-                    } else {
-                        R.start = R.start - (timeDifference*60000);
-                    }
-                    // update display incase the timer is paused
-                    this.display(true);
-                    // R.start = R.start - 
-                    // debugger;
+    },{
+        baseElement:undefined,
+        id:undefined,
+        start:undefined,
+        end:undefined,
+        mode:undefined,
+        name:'',
+        'export':true,
+        asSaveValue:function(){
+            if(this['export']){
+                return {
+                    'name':this.name,
+                    'start':this.start,
+                    'end':this.end,
+                    'mode':this.mode
                 }
-                R.name = new_name;
-                save();
+            }
+            return undefined;
+        },
+        dispose:function(){
+            if(this.isDisposable()){
+                this.abort();
+                this['export'] = false;
+                this.baseElement.remove();
+                return true;
             } else {
-                if(R.isDisposable() == true) {
-                    let dispose = await popup('Möchtest du \''+old_name+'\' Löschen?', null, 'Löschen', 'Abbrechen');
-                    if(dispose == true)
-                    {
-                        // console.log(dispose);
-                        // window.R = R;
-                        R.dispose()
-                        
-                    }
+                return false;
+            }
+        },
+        isDisposable:function(){
+            return (this.mode === this.static.MODES.IDLE && this.start === undefined && this.end === undefined);
+        },
+        equals:function(other){
+            return other===this.baseElement || other === this.id;
+        },
+        update:function(){
+            this.baseElement.querySelector("button.time").classList.value="time button-"+(this.mode===this.static.MODES.RUN?'run':'stop');
+        },
+        display:function(first){
+            if(typeof first !== 'boolean') {
+                first = false;
+            }
+            let zero = new Date('2000-01-01 00:00:00');
+            zero=zero.getTime()-zero.getTimezoneOffset(); /* makes the display move along timezones */
+            function ltrim(tx){tx=tx.toString();if(tx.length===1){return "0"+tx}else{return tx;}}
+            let timeValue=undefined;
+            if(this.mode===this.static.MODES.IDLE&&first){
+                if(typeof this.start==='undefined' || this.start === 0){
+                    timeValue="00:00:00";
                 } else {
+                    let calc=new Date(this.end-this.start+zero);/*move 'start' to 'zero' along with 'end'*/
+                    timeValue=new Array(calc.getHours(),calc.getMinutes(),calc.getSeconds()).map(ltrim).join(":");
+                }
+            } else if (this.mode===this.static.MODES.RUN){
+                let calc=new Date(Date.now()-this.start+zero);
+                timeValue=new Array(calc.getHours(),calc.getMinutes(),calc.getSeconds()).map(ltrim).join(":");
+            }
+            if(typeof timeValue!=='undefined'){
+                this.baseElement.querySelector("button").innerText=timeValue;
+            }
+        },
+        h_click:function(){
+            if (this.mode === this.static.MODES.IDLE) {
+                let time;
+                if (typeof(this.end)==="undefined") {
+                    time = Date.now();
+                } else {
+                    time = (Date.now() - (this.end - this.start + 0));
+                }
+                this.end=undefined;
+                this.start=time;
+                this.mode=this.static.MODES.RUN;
+            } else {/*RUNNING*/
+                this.end=Date.now();
+                this.mode=this.static.MODES.IDLE;
+            }
+            this.update();
+            ctx.Timer.save();
+        },
+        h_reset:function(e){
+            try{e.preventDefault();}catch(ignore){}
+            if(this.mode===this.static.MODES.IDLE){
+                this.start=undefined;
+                this.end=undefined;
+            }
+            this.update();
+            this.display(true);
+            ctx.Timer.save();
+        },
+        h_editName:function(){
+            (async function (R){
+                let name_old=R.name;
+                let name_new=await API.Popup(API.t('watch.name.new'),R.name,API.t('watch.name.save'),API.t('watch.name.cancel'));
+                if(name_new==''){ /*wants to delete*/
+                    if(R.isDisposable()){
+                        let delete_confirm=await API.Popup(API.t('watch.delete.title',name_old),undefined,API.t('watch.delete.confirm'),API.t('watch.delete.cancel'));
+                        if(delete_confirm){
+                            R.dispose();
+                            ctx.Timer.save();
+                        }
+                    }
+                } else {/*wants to rename*/
+                    if(name_new.match(/([+-]\d+)$/gm)!=null){
+                        let spliter=Array.from(name_new.matchAll(/(.*)([+-]\d+)$/gm)); /* [<full>,<textonly>,<modifieronly>] */
+                        name_new=spliter[0][1];
+                        let timeDifference=parseInt(spliter[0][2]);
+                        if(isNaN(timeDifference)){timeDifference=0;}
+                        if(typeof(R.start)==='undefined'){
+                            R.start=1;
+                            R.end=(timeDifference*60000)+1;
+                        } else {
+                            R.start=R.start-(timeDifference*60000);
+                        }
+                        R.display(true);
+                    }
+                    R.name=name_new;
+                    ctx.Timer.save();
+                }
+                R.baseElement.querySelector('span').innerText=R.name;
+            })(this);
+        }
+    },{
+        MODES:{'IDLE':0,'RUN':1},
+        generateModel:function(data){
+            return _element('div',{},[
+                _element('button',{'class':'time'},[_text('00:00:00')]),
+                _element('span',{},[_text(data.name)]),
+                _element('input',{'type':'hidden','value':data.id},[]),
+                _element('button',{'class':'rename'},[_text('Edit')])
+            ]);
+            // return this.list.children.item(this.list.children.length-1);
+        }
+    });
 
-                }
-            }
-            R.baseElement.querySelector('span').innerText = R.name;
+
+    defineClass(API, API.Abortable, function Timers(){
+        this.super();
+        if("addEventListener" in ctx){
+            let R=this;
+            ctx.addEventListener("beforeunload",function(){R.save();},{'signal':this.signal()});
+            ctx.document.addEventListener("readystatechange",function(){R.load();},{'signal':this.signal()});
         }
-        )(this)
-    }
-    display(first = false) {
-        let zero = new Date("2000-01-01 00:00:00");
-        zero = new Date(zero.getTime() - zero.getTimezoneOffset());
-        if (this.mode == MODES.IDLE && first == true) {
-            if (this.start == null || this.start == 0)
-                this.baseElement.querySelector("button").innerText = "00:00:00";
-            else {
-                let calc = new Date(this.end - this.start + zero.getTime());
-                this.baseElement.querySelector("button").innerText =
-                    (calc.getHours().toString().length == 1 ? "0" : "") +
-                    calc.getHours() +
-                    ":" +
-                    (calc.getMinutes().toString().length == 1 ? "0" : "") +
-                    calc.getMinutes() +
-                    ":" +
-                    (calc.getSeconds().toString().length == 1 ? "0" : "") +
-                    calc.getSeconds();
+        this.menu = ctx.document.querySelector("div.menu");
+        this.menu.querySelector('h3').remove();
+        [
+            ['menu.button.add',this.add.bind(this)]
+            ,['menu.button.removeAll',this.removeAll.bind(this)]
+
+        ].forEach(function(item){
+            let element = _element('button', {},[_text(API.t(item[0]))]);
+            element.addEventListener('click',item[1],{'signal':this.signal()});
+            this.menu.append(element);
+        },this);
+
+        // page specific
+        this.list = ctx.document.querySelector("div.list");
+        this.updateId = setInterval(this.renderWatches.bind(this),500);
+    },{
+        loaded:false,
+        timers:[],
+        renderWatches:function(){
+            this.timers.forEach(function(e){
+                e.display(false);
+            });
+        },
+        getNextUnique:function(){
+            var next=0;
+            if(this.timers.length){
+                next = this.timers.reduce(function(p,c){
+                    return Math.max(p,c.id);
+                },0);
             }
-        } else if (this.mode == MODES.RUN) { /* mode=MODES.RUN */
-            let calc = new Date(Date.now() - this.start + zero.getTime());
-            this.baseElement.querySelector("button").innerText =
-                (calc.getHours().toString().length == 1 ? "0" : "") +
-                calc.getHours() +
-                ":" +
-                (calc.getMinutes().toString().length == 1 ? "0" : "") +
-                calc.getMinutes() +
-                ":" +
-                (calc.getSeconds().toString().length == 1 ? "0" : "") +
-                calc.getSeconds();
+            return next+1;
+        },
+        add:function(){
+            var watch = new API.Watch({
+                "name":"New timer",
+                "start":undefined,
+                "id": this.getNextUnique(),
+                "mode":API.Watch.MODES.IDLE
+            });
+            this.list.appendChild(watch.baseElement);
+            this.timers.push(watch);
+            this.save();
+        },
+        removeAll:async function(){
+            if(await API.Popup(API.t('watch.delete.title'), undefined, API.t('watch.delete.confirm'), API.t('watch.delete.cancel'))){
+                this.timers.forEach(function(watch){
+                    watch.dispose();
+                });
+            }
+            this.save();
+        },
+        destroy:function(){
+            this.abort();
+            clearInterval(this.updateId);
+        },
+        save:function(){
+            localStorage.setItem(
+                this.static.global_storage_key,
+                JSON.stringify(
+                    this.timers.map(
+                        function(i){
+                            return i.asSaveValue();
+                        }
+                    ).filter(function(i){
+                        return typeof i!=='undefined';
+                    })
+                )
+            );
+            this.log('Data Saved');
+        },
+        load:function(){
+            if(this.loaded){return;}
+            this.loaded=true;
+            this.log('Loading Data...');
+            let data=JSON.parse(localStorage.getItem(this.static.global_storage_key)||'[]');
+            if(typeof data!=='object'||data.length===0){return;}
+            let R=this;
+            data.forEach(function(i){
+                let w=new API.Watch(extendObject(i,[{"id":R.getNextUnique()}]));
+                R.timers.push(w);
+                R.list.appendChild(w.baseElement);
+            });
+            this.log('Data Loaded');
+        },
+        log:function(v){
+            console.info(v);
         }
-    }
-    get save_value() {
-        return (
-            this.export == false ? null : {
-                /* "id":this.id, */
-                "name": this.name,
-                "start": this.start,
-                "end": this.end,
-                "mode": this.mode
-            }
-        )
-    }
-}
-// #endregion
-function save() {
-    localStorage.setItem(
-        global_storage,
-        JSON.stringify(
-            timers.map(
-                (e) => e.save_value
-            ).filter(
-                (e)=>{
-                    return e!=null
-                }
-            )
-        )
-    )
-    console.log("Data Saved!");
-}
-var loaded = false;
-let data;
-function load() {
-    if (loaded == true) return;
-    loaded = true;
-    console.log("Loading Data...");
-    // console.info(arguments);
-    data = JSON.parse(
-        localStorage.getItem(
-            global_storage
-        ) || []
-    )
-    if (data == [] || data.length == 0) return;
-    data.map(
-        (e) => timers.push(
-            new watch(e)
-        )
-    )
-    console.log("Data Loaded!");
-}
+    },{
+        // #region Settings
+        global_storage_key: "ch_thomas_timer",
+        // #endregion Settings
+    });
+
+    extendObject(ctx, [{
+        'Timer':new API.Timers(),
+        'TimerApi':API
+    }]);
+
+    // ctx.onbeforeunload=function(){ctx.Timer.save();};
+    // ctx.document.onreadystatechange=function(){ctx.Timer.load();}
+
+})(typeof globalThis!=='undefined'?globalThis:window);
