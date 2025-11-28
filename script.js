@@ -1,14 +1,14 @@
 /**
- * @version 1.3 (11.11.2025)
+ * @version 1.4 (28.11.2025)
  * @author ensnerT (2025) https://github.com/EnsnerT
  * */
-(function (ctx){
+(function (ctx,doc){
     /* @formatter:off */
     function extendObject(b,e){return Object.defineProperties(b,Object.fromEntries(e.map(function(i){return Object.entries(Object.getOwnPropertyDescriptors(i));}).reduce(function(p,c){return(c.forEach(function(d){p.push(d);})),p;},[])));}
     /* define : (namespace, super, constructorFunction, prototype/classMethods, universal/staticMethods). */
     function defineClass(n,s,c,p,u){u=extendObject(u||{},[Object.fromEntries(Object.entries(s||{})),{'super':s}]);extendObject((n[c.name]=extendObject(c,[u||{}])).prototype,[p||{},s&&Object.fromEntries(Object.entries(s.prototype))||{},Object.defineProperty({},'static',{get:function(){return c;},set:function(v){}})])['super']=extendObject((s||function(){}),[s&&s.prototype||{}]);}
-    function _element(type,props,childs){var e=ctx.document.createElement(type);for(var key in props){e.setAttribute(key,props[key]);}for(var i in childs){e.appendChild(childs[i]);}return e;}
-    function _text(content){return ctx.document.createTextNode(content);}
+    function _element(type,props,childs){var e=doc.createElement(type);for(var key in props){e.setAttribute(key,props[key]);}for(var i in childs){e.appendChild(childs[i]);}return e;}
+    function _text(content){return doc.createTextNode(content);}
     /* @formatter:on */
 
     var API = {};
@@ -22,6 +22,7 @@
                 'watch.delete.title': 'Löschen?',
                 'watch.delete.confirm': 'Ja',
                 'watch.delete.cancel': 'Nein',
+                'watch.edit.title': 'ändern',
                 'menu.button.add': 'Neu',
                 'menu.button.removeAll': 'Alle Löschen'
             },
@@ -32,11 +33,12 @@
                 'watch.delete.title': 'Delete?',
                 'watch.delete.confirm': 'Yes',
                 'watch.delete.cancel': 'No',
+                'watch.edit.title': 'Edit',
                 'menu.button.add': 'Add',
                 'menu.button.removeAll': 'Remove All'
             }
         };
-        API.lang = 'en';/*default lang*/
+        API.lang = 'de';/*default lang*/
         function identity(e) {
             return e;
         }
@@ -54,9 +56,8 @@
                 API.lang = validLangTags[0];
             }
         }
-        ctx.document.documentElement.lang=API.lang;
         API.t = function (key) {
-            return API.i18n[API.lang][key];
+            return (API.i18n[API.lang]||{[key]:key})[key];
         }
     }
 
@@ -81,10 +82,10 @@
 
     API.Popup = async function Popup(title, default_value, ok_text, cancel_text){
         // Note: the popup does not create a new popup, but instead modifies one specific popup
-        if (typeof ctx["document"] !== "object"){
+        if (typeof doc !== "object"){
             throw new Error("document object not found");
         }
-        var popupElement = ctx.document.getElementById("popup");
+        var popupElement = doc.getElementById("popup");
 
         while(popupElement.style.visibility === "visible")await API.sleep(500);
 
@@ -98,8 +99,8 @@
             e_text.focus(); /* auto focus */
         } else {
             /* Fix: would not remove the focus from certain elements. could cause double calls */
-            if(ctx.document.activeElement){
-                ctx.document.activeElement.blur();
+            if(doc.activeElement){
+                doc.activeElement.blur();
             }
         }
 
@@ -160,9 +161,9 @@
             this.name=opts.name;
             this.baseElement=this.static.generateModel(opts);
         }
-        this.baseElement.querySelector('button.time').addEventListener('click',this.h_click.bind(this),{'signal':this.signal()});
-        this.baseElement.querySelector('button.time').addEventListener('contextmenu',this.h_reset.bind(this),{'signal':this.signal()});
-        this.baseElement.querySelector('button.rename').addEventListener('click',this.h_editName.bind(this),{'signal':this.signal()});
+        this.baseElement.querySelector('.time').addEventListener('click',this.h_click.bind(this),{'signal':this.signal()});
+        this.baseElement.querySelector('.time').addEventListener('contextmenu',this.h_reset.bind(this),{'signal':this.signal()});
+        this.baseElement.querySelector('.rename').addEventListener('click',this.h_editName.bind(this),{'signal':this.signal()});
         this.update();
         this.display(true);
     },{
@@ -201,7 +202,7 @@
             return other===this.baseElement || other === this.id;
         },
         update:function(){
-            this.baseElement.querySelector("button.time").classList.value="time button-"+(this.mode===this.static.MODES.RUN?'run':'stop');
+            this.baseElement.querySelector(".time").classList.value="time button-"+(this.mode===this.static.MODES.RUN?'run':'stop');
         },
         display:function(first){
             if(typeof first !== 'boolean') {
@@ -223,7 +224,7 @@
                 timeValue=new Array(calc.getHours(),calc.getMinutes(),calc.getSeconds()).map(ltrim).join(":");
             }
             if(typeof timeValue!=='undefined'){
-                this.baseElement.querySelector("button").innerText=timeValue;
+                this.baseElement.querySelector(".time").innerText=timeValue;
             }
         },
         h_click:function(){
@@ -263,7 +264,6 @@
                         let delete_confirm=await API.Popup(API.t('watch.delete.title',name_old),undefined,API.t('watch.delete.confirm'),API.t('watch.delete.cancel'));
                         if(delete_confirm){
                             R.dispose();
-                            ctx.Timer.save();
                         }
                     }
                 } else {/*wants to rename*/
@@ -283,32 +283,246 @@
                     R.name=name_new;
                     ctx.Timer.save();
                 }
-                R.baseElement.querySelector('span').innerText=R.name;
+                R.baseElement.querySelector('.name').innerText=R.name;
             })(this);
         }
     },{
         MODES:{'IDLE':0,'RUN':1},
         generateModel:function(data){
-            return _element('div',{},[
-                _element('button',{'class':'time'},[_text('00:00:00')]),
-                _element('span',{},[_text(data.name)]),
-                _element('input',{'type':'hidden','value':data.id},[]),
-                _element('button',{'class':'rename'},[_text('Edit')])
+            return _element('div', {'class': 'item'}, [
+                _element('div', {}, [
+                    _element('button', {'class': 'time'}, [_text('00:00:00')]),
+                    _element('span', {'class': 'name'}, [_text(data.name)]),
+                    _element('input', {'type': 'hidden', 'value': data.id}, []),
+                    _element('button', {'class': 'rename'}, [_text(API.t('watch.edit.title'))]),
+                ]),
+                _element('span',{'class':'overlay'},[])
             ]);
-            // return this.list.children.item(this.list.children.length-1);
         }
     });
 
+    defineClass(API, API.Abortable, function Draggable(list, childSelector, targetSelector, handle){
+        this.super();
+        this.options={
+            'list':list,
+            'childSelector':childSelector,
+            'targetSelector':targetSelector,
+            'handle':handle,
+            'minTravelDistance': 20,
+            'edgeDist': 80
+        };
+        this.refreshHandlers();
+    },{
+        isDragging:false,
+        /** @type {{active:boolean,aborter:{abort():void,signal():AbortSignal},childIndex:number,handle:{child:HTMLElement,targetHandle:HTMLElement},startingHandle:Array<{child:HTMLElement,targetHandle:HTMLElement}>,pos:{x:number,y:number},pointerId:number,iteration:{appliedMovers:Array<number>,childIndex:number}}} */
+        draggingData:undefined,
+        anyAborts:function(){
+            return AbortSignal.any([this.baseSignal.signal(), this.signal()]);
+        },
+        refreshHandlers:function(){
+            if (typeof this.baseSignal !== 'undefined'){
+                this.baseSignal.abort();
+            }
+            this.baseSignal=new API.Abortable();
+            this.getHandles().forEach(function(item){
+                item.targetHandle.style.touchAction='none'; // todo - put this one in css
+                item.targetHandle.addEventListener('pointerdown', this.handle_start.bind(this), {'signal':this.anyAborts(),'capture':true});
+            },this);
+        },
+        getHandles:function(){
+            return Array.from(this.options.list.querySelectorAll(this.options.childSelector)).map(function(item){
+                return {'child':item,'targetHandle':item.querySelector(this.options.targetSelector)};
+            },this);
+        },
+        /** @param {PointerEvent} pointerEvent */
+        scrollStartEdge:function(pointerEvent){
+            this.draggingData.scroller={
+                vh:doc.scrollingElement.clientHeight,
+                vw:doc.scrollingElement.clientWidth,
+                sh:doc.scrollingElement.scrollHeight,
+                sw:doc.scrollingElement.scrollWidth,
+            };
+        },
+        /** @param {PointerEvent} pointerEvent */
+        scrollAtEdge:function(pointerEvent){
+            if (pointerEvent.pointerType === "mouse")
+                return; // disables for mice. since they have scrollwheels
+            // todo: approach 2: install a timer and move every 35ms by 20 units in the direction, until the pointer is not at the edge anymore
+            let dist = this.options.edgeDist;
+            let data = this.draggingData.scroller;
+            if (data.sh > data.vh) {
+                if (pointerEvent.clientY < dist){
+                    // go up
+                    doc.scrollingElement.scrollTop -= ((pointerEvent.clientY-dist) / -dist) * 20;
+                } else if (pointerEvent.clientY > data.vh - dist){
+                    // go down
+                    doc.scrollingElement.scrollTop += ((pointerEvent.clientY - data.vh + dist) / dist) * 20;
+                }
+            }
+        },
+        /** @param {PointerEvent} pointerEvent */
+        handle_start: function(pointerEvent){
+            if(this.isDragging)
+                return true;
+            this.isDragging=true;
+            // pointerEvent.preventDefault();
+            let predicate = function(item){
+                return pointerEvent.target.isSameNode(item.targetHandle);
+            };
+            let handles = this.getHandles();
+            this.draggingData={
+                aborter: new API.Abortable(),
+                childIndex:handles.findIndex(predicate),
+                handle:handles.filter(predicate)[0],
+                startingHandle:handles,
+                pos:{x:pointerEvent.screenX,y:pointerEvent.screenY},
+                iteration:{appliedMovers:[]},
+                pointerId: pointerEvent.pointerId,
+                active:false
+            };
+            this.draggingData.childHeight=this.draggingData.handle.child.clientHeight;
+            this.options.list.style.setProperty("--h", this.draggingData.childHeight+"px");
+            this.options.list.style.setProperty("--dd-offset", "0px");
+            // removeProperty
+
+            this.options.list.addEventListener('pointermove',this.handle_move.bind(this),{'signal':this.draggingData.aborter.signal(),'capture':false});
+            ctx.addEventListener('pointerup',this.handle_end.bind(this),{'signal':this.draggingData.aborter.signal()});
+            if (pointerEvent.target.hasPointerCapture(pointerEvent.pointerId)) {
+                pointerEvent.target.releasePointerCapture(pointerEvent.pointerId);
+            }
+            this.scrollStartEdge(pointerEvent);
+
+            return false;
+        },
+        /** @param {PointerEvent} pointerEvent */
+        handle_move: function(pointerEvent) {
+            if (this.draggingData.pointerId !== pointerEvent.pointerId)
+                return;
+
+            let dist = Math.sqrt(Math.pow(pointerEvent.screenX-this.draggingData.pos.x,2) + Math.pow(pointerEvent.screenY-this.draggingData.pos.y,2));
+
+            if (!this.draggingData.active){
+                if(dist > this.options.minTravelDistance) {
+                    this.options.list.classList.add("moving"); // will passivly disable the click event
+                    this.draggingData.active = true;
+                } else {
+                    return;
+                }
+            }
+            let predicate = function(item){
+                return item.child.contains(pointerEvent.target);
+            };
+
+            let currentChildIndex = this.draggingData.startingHandle.findIndex(predicate);
+            // if there is a child selected, or the childIndex EQUALS starting index
+            if (currentChildIndex !== -1 || currentChildIndex === this.draggingData.childIndex){
+                // store the current child index
+                this.draggingData.iteration.childIndex = currentChildIndex;
+            }
+            if (currentChildIndex === -1)
+            {
+                currentChildIndex = this.draggingData.iteration.childIndex; // load from the previous round
+            }
+
+            let direction = 1;
+            let startIndex = this.draggingData.childIndex;
+            if (currentChildIndex < startIndex) {
+                direction = -1;
+            }
+            // passive: if start == current => direction = 1
+
+            this.scrollAtEdge(pointerEvent);
+
+            let initialMovers = this.draggingData.iteration.appliedMovers;
+            let finalMovers = [];
+            {
+                let lower=Math.min(startIndex,currentChildIndex);
+                let upper=Math.max(startIndex,currentChildIndex);
+
+                for (let i = lower, f=100; i <= upper && f>=0; i++ && f--){
+                    finalMovers.push(i);
+                    if(f <= 0) return; // something went wrong or you have a ton of
+                }
+            }
+
+            if (finalMovers.length>0) {
+                this.draggingData.handle.child.classList.add("passout");
+            } else {
+                this.draggingData.handle.child.classList.remove("passout");
+                direction=0;
+            }
+            this.options.list.style.setProperty("--dd-offset", (this.draggingData.childHeight*-direction)+"px");
+
+            let additiveMovers = finalMovers.filter(function(v){return !initialMovers.includes(v);});
+            let removedMovers = initialMovers.filter(function(v){return !finalMovers.includes(v);});
+
+            for (let v of removedMovers){
+                if(this.draggingData.startingHandle[v])
+                    this.draggingData.startingHandle[v].child.classList.remove("moved");
+            }
+            for (let v of additiveMovers)
+            {
+                if(this.draggingData.startingHandle[v])
+                    this.draggingData.startingHandle[v].child.classList.add("moved");
+            }
+
+            this.draggingData.iteration.appliedMovers = finalMovers;
+        },
+        /** @param {PointerEvent} pointerEvent */
+        handle_end: function(pointerEvent){
+            // this.draggingData
+            if (this.draggingData.pointerId !== pointerEvent.pointerId)
+                return;
+
+            this.draggingData.aborter.abort();
+            // this.options.list.removeEventListener('pointermove',this.handle_move.bind(this));
+            // this.options.list.removeEventListener('pointerup',this.handle_move.bind(this));
+
+            this.options.list.classList.remove("moving");
+            for (let index of this.draggingData.iteration.appliedMovers)
+            {
+                this.draggingData.startingHandle[index].child.classList.remove("moved");
+            }
+            this.draggingData.handle.child.classList.remove("passout");
+            this.options.list.style.removeProperty("--h");
+            this.options.list.style.removeProperty("--dd-offset");
+
+            // this.isDragging=false;
+            let startIndex = this.draggingData.childIndex;
+            let endIndex = this.draggingData.iteration.childIndex;
+            if (typeof endIndex !== 'undefined' && endIndex !== startIndex) {
+                let kind = 'afterend';
+                if (endIndex < startIndex) {
+                    kind = 'beforebegin';// move before
+                }
+                this.draggingData.startingHandle[endIndex].child.insertAdjacentElement(kind,this.draggingData.handle.child);
+
+                if (typeof this.options.handle === 'function')
+                {
+                    this.options.handle(startIndex, endIndex, endIndex < startIndex);
+                }
+            }
+
+            this.isDragging=false;
+        },
+        /** @param {PointerEvent} pointerEvent */
+        handle_cancel:function(pointerEvent){}
+    },{
+
+    });
 
     defineClass(API, API.Abortable, function Timers(){
         this.super();
         if("addEventListener" in ctx){
             let R=this;
             ctx.addEventListener("beforeunload",function(){R.save();},{'signal':this.signal()});
-            ctx.document.addEventListener("readystatechange",function(){R.load();},{'signal':this.signal()});
+            doc.addEventListener("readystatechange",function(){
+                R.load();
+                R.draggable.refreshHandlers();
+            },{'signal':this.signal()});
         }
-        this.menu = ctx.document.querySelector("div.menu");
-        this.menu.querySelector('h3').remove();
+        this.menu = doc.querySelector("div.menu");
+        this.menu.children[0].remove();
         [
             ['menu.button.add',this.add.bind(this)]
             ,['menu.button.removeAll',this.removeAll.bind(this)]
@@ -322,6 +536,27 @@
         // page specific
         this.list = ctx.document.querySelector("div.list");
         this.updateId = setInterval(this.renderWatches.bind(this),500);
+        this.draggable = new API.Draggable(this.list,'.item','.rename',(function(targetIndex, splitIndex){
+            /* future improvement: tI is not needed twice */
+            let tI=-1;
+            let tempTimers = this.timers.filter(function(v){if(v['export']){tI++;}return v['export']&&tI!==targetIndex;});
+            tI=-1;
+            let item = this.timers.filter(function(v){if(v['export']){tI++;}return v['export']&&tI===targetIndex;})[0];
+            let count = this.timers.length;
+            for (let i = 0;i<count;i++){
+                let current = this.timers.shift();
+                if (!current['export'])
+                    tempTimers.push(current);
+            }
+            for(let i = 0;i<count;i++){
+                if(i === splitIndex){
+                    this.timers.push(item);
+                } else {
+                    this.timers.push(tempTimers.shift());
+                }
+            }
+            this.save();
+        }).bind(this));
     },{
         loaded:false,
         timers:[],
@@ -344,11 +579,12 @@
                 "name":"New timer",
                 "start":undefined,
                 "id": this.getNextUnique(),
-                "mode":API.Watch.MODES.IDLE
+                "mode":API.Watch.MODES.IDLE,
             });
             this.list.appendChild(watch.baseElement);
             this.timers.push(watch);
             this.save();
+            this.draggable.refreshHandlers();
         },
         removeAll:async function(){
             if(await API.Popup(API.t('watch.delete.title'), undefined, API.t('watch.delete.confirm'), API.t('watch.delete.cancel'))){
@@ -357,6 +593,7 @@
                 });
             }
             this.save();
+            this.draggable.refreshHandlers();
         },
         destroy:function(){
             this.abort();
@@ -408,4 +645,4 @@
     // ctx.onbeforeunload=function(){ctx.Timer.save();};
     // ctx.document.onreadystatechange=function(){ctx.Timer.load();}
 
-})(typeof globalThis!=='undefined'?globalThis:window);
+})(typeof globalThis!=='undefined'?globalThis:window, document);
