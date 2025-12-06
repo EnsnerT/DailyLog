@@ -147,6 +147,64 @@
 
     defineClass(API, null, function Abortable(){this.aborter=new AbortController();},{signal:function(){return this.aborter.signal;},abort:function(){this.aborter.abort("stopped");}},{});
 
+    /** [FIX] Safari : #5 */
+    defineClass(API, null, function ContextMenuEvent(element, callback, signal){
+        this.data.element = element;
+        this.data.callback = callback;
+        this.data.signal = signal;
+
+        element.addEventListener('pointerdown',this.h_pointerDown.bind(this),{'signal':signal});
+        element.addEventListener('pointermove',this.h_pointerMove.bind(this),{'signal':signal});
+        element.addEventListener('pointerup',this.h_pointerUp.bind(this),{'signal':signal});
+    },{
+        detectActionTimerId:undefined,
+        data:{x:undefined,y:undefined,pointerId:undefined},
+        h_pointerDown:function(pointerEvent){
+            if (this.data.pointerId !== undefined || this.data.pointerId !== pointerEvent.pointerId) {
+                return true;
+            }
+
+            this.data.pointerId = pointerEvent.pointerId;
+            this.data.x = pointerEvent.clientX;
+            this.data.y = pointerEvent.clientY;
+            if (this.detectActionTimerId)
+                clearTimeout(this.detectActionTimerId);
+            this.detectActionTimerId=setTimeout(this.trigger.bind(this,pointerEvent),1200);
+        },
+        h_pointerMove:function(pointerEvent){
+            if (this.isWrongPointer(pointerEvent)){
+                return true;
+            }
+            if (this.dist(pointerEvent) < 20){
+                return true; /* all fine; no need to do anything */
+            }
+            if (this.detectActionTimerId !== undefined)
+                clearTimeout(this.detectActionTimerId);
+        },
+        h_pointerUp:function(pointerEvent){
+            if (this.isWrongPointer(pointerEvent)){
+                return true;
+            }
+            this.data.pointerId = undefined; /* reset pointer */
+            if (this.dist(pointerEvent) < 20)
+                return true;
+            if (this.detectActionTimerId !== undefined)
+                clearTimeout(this.detectActionTimerId);
+        },
+        dist:function(pointerEvent){
+            return Math.sqrt(Math.pow(pointerEvent.clientX-this.data.x,2) + Math.pow(pointerEvent.clientY-this.data.y,2));
+        },
+        isWrongPointer:function(pointer){
+            return this.data.pointerId === undefined || this.data.pointerId !== pointer.pointerId;
+        },
+        trigger:function(startEvent){
+            // this.data.element.dispatchEvent( new Event("contextmenu",{/* ..insert parameters if needed...*/}) );
+            if (typeof this.data.callback === "function") {
+                this.data.callback(startEvent);
+            }
+        }
+    },{});
+
     defineClass(API, API.Abortable, function Watch(opts){
         this.super();
         if(opts instanceof Element){
@@ -163,6 +221,7 @@
         }
         this.baseElement.querySelector('.time').addEventListener('click',this.h_click.bind(this),{'signal':this.signal()});
         this.baseElement.querySelector('.time').addEventListener('contextmenu',this.h_reset.bind(this),{'signal':this.signal()});
+        new API.ContextMenuEvent(this.baseElement.querySelector('.time'),this.h_reset.bind(this),this.signal());
         this.baseElement.querySelector('.rename').addEventListener('click',this.h_editName.bind(this),{'signal':this.signal()});
         this.update();
         this.display(true);
@@ -299,6 +358,55 @@
                 _element('span',{'class':'overlay'},[])
             ]);
         }
+    });
+
+    defineClass(API, API.Abortable, function Fix_Selection(){
+        this.super();
+        if (!this.static.isInstalled()){
+            throw new Error("Can not install twice");
+        }
+        this.static.active=true;
+        doc.addEventListener("selectionchange",this.onSelectionChange_FixedRenameMove.bind(this),{'signal':this.signal()});
+    },{
+        /* [FIX] #8 */
+        onSelectionChange_FixedRenameMove:function onSelectionChange_FixedRenameMove(_ignore){
+            // step 1 : Did we even select a "raname" element
+            let selection = ctx.getSelection();
+            if (selection.type !== "Range" || selection.direction === "none")
+                return true; // deselection
+
+            const isSelectionBackwards = selection.direction === "backward";
+            let names = Array.from(doc.querySelectorAll(".rename"));
+            if (isSelectionBackwards){
+                names.reverse();
+            }
+            while (names.length){
+                if (selection.containsNode(names[0],true)){
+                    break;
+                }
+                names.shift();
+            }
+            if ( !names.length ){
+                return true; // all fine, no name elements are selected
+            }
+            // step 2 : Findout what part of the Text the user did select until the Interaction of the "name" element
+            // note: i only expect 1 selection!
+            const currentSelectionRange = selection.getRangeAt(0); // ranges are always forewards
+
+            if (isSelectionBackwards){
+                selection.setBaseAndExtent(currentSelectionRange.endContainer,currentSelectionRange.endOffset,currentSelectionRange.endContainer,0);
+            } else {
+                // currentSelectionRange.setEndAfter(currentSelectionRange.startContainer);
+                selection.setBaseAndExtent(currentSelectionRange.startContainer,currentSelectionRange.startOffset,currentSelectionRange.startContainer,currentSelectionRange.startContainer.textContent.length);
+            }
+        },
+        discard:function(){
+            this.static.active=false;
+            this.abort();
+        }
+    },{
+        active:false,
+        isInstalled:function(){return this.active;}
     });
 
     defineClass(API, API.Abortable, function Draggable(list, childSelector, targetSelector, handle){
@@ -534,11 +642,28 @@
         },this);
 
         // page specific
-        this.list = ctx.document.querySelector("div.list");
+        this.list = doc.querySelector(".list");
         this.updateId = setInterval(this.renderWatches.bind(this),500);
+        new API.Fix_Selection(); // FIX #8
         this.draggable = new API.Draggable(this.list,'.item','.rename',(function(targetIndex, splitIndex){
             /* future improvement: tI is not needed twice */
             let tI=-1;
+            // let count = 0;
+            // let visibleTimers = [];
+            // let removedTimers = [];
+            // let movingTimer = undefined;
+            // for (let v of this.timers){
+            //     count++;
+            //     if(v['export']||tI===targetIndex){tI++;}
+            //     if(tI===targetIndex){
+            //         movingTimer = v;
+            //         continue;
+            //     }
+            //     if (v['export'])
+            //         visibleTimers.push(v);
+            //     else 
+            //         removedTimers.push(v);
+            // }
             let tempTimers = this.timers.filter(function(v){if(v['export']){tI++;}return v['export']&&tI!==targetIndex;});
             tI=-1;
             let item = this.timers.filter(function(v){if(v['export']){tI++;}return v['export']&&tI===targetIndex;})[0];
@@ -641,8 +766,5 @@
         'Timer':new API.Timers(),
         'TimerApi':API
     }]);
-
-    // ctx.onbeforeunload=function(){ctx.Timer.save();};
-    // ctx.document.onreadystatechange=function(){ctx.Timer.load();}
 
 })(typeof globalThis!=='undefined'?globalThis:window, document);
