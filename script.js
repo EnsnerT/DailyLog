@@ -362,9 +362,9 @@
 
     defineClass(API, API.Abortable, function Fix_Selection(){
         this.super();
-        if (!this.static.isInstalled()){
-            throw new Error("Can not install twice");
-        }
+        // if (this.static.isInstalled()){
+        //     throw new Error("Can not install twice");
+        // }
         this.static.active=true;
         doc.addEventListener("selectionchange",this.onSelectionChange_FixedRenameMove.bind(this),{'signal':this.signal()});
     },{
