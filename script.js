@@ -122,10 +122,9 @@
             })(ok_text !== undefined, cancel_text !== undefined);
             e_ok.addEventListener('click',resolveWith,{'signal':aborter.signal});
             e_cancel.addEventListener('click',resolveWith,{'signal':aborter.signal});
-            document.addEventListener('keydown',keyDownListener,{'signal':aborter.signal});
+            doc.addEventListener('keydown',keyDownListener,{'signal':aborter.signal});
         });
         var value=undefined;
-        console.log(click);
         if (click.target.classList.contains("ok_button")){
             if(default_value !== undefined){
                 value=e_text.value;
@@ -148,28 +147,35 @@
     defineClass(API, null, function Abortable(){this.aborter=new AbortController();},{signal:function(){return this.aborter.signal;},abort:function(){this.aborter.abort("stopped");}},{});
 
     /** [FIX] Safari : #5 */
-    defineClass(API, null, function ContextMenuEvent(element, callback, signal){
-        this.data.element = element;
-        this.data.callback = callback;
-        this.data.signal = signal;
+    defineClass(API, null, function ContextMenuEvent(element, signal, ctxMenuCallback, clickCallback){
+        this.data = {
+            x:undefined,
+            y:undefined,
+            pointerId:undefined,
+            element:element,
+            signal:signal,
+            ctxMenuCallback:ctxMenuCallback,
+            clickCallback:clickCallback
+        };
 
         element.addEventListener('pointerdown',this.h_pointerDown.bind(this),{'signal':signal});
         element.addEventListener('pointermove',this.h_pointerMove.bind(this),{'signal':signal});
         element.addEventListener('pointerup',this.h_pointerUp.bind(this),{'signal':signal});
     },{
         detectActionTimerId:undefined,
-        data:{x:undefined,y:undefined,pointerId:undefined},
         h_pointerDown:function(pointerEvent){
-            if (this.data.pointerId !== undefined || this.data.pointerId !== pointerEvent.pointerId) {
+            if (this.data.pointerId !== undefined && this.data.pointerId !== pointerEvent.pointerId) {
                 return true;
             }
+            if (pointerEvent.pointerType === "mouse" && pointerEvent.button !== 0)
+                return true; /* ignore on "mouse" all clicks other than "LMB" */
 
             this.data.pointerId = pointerEvent.pointerId;
             this.data.x = pointerEvent.clientX;
             this.data.y = pointerEvent.clientY;
             if (this.detectActionTimerId)
                 clearTimeout(this.detectActionTimerId);
-            this.detectActionTimerId=setTimeout(this.trigger.bind(this,pointerEvent),1200);
+            this.detectActionTimerId=setTimeout(this.trigger.bind(this,pointerEvent),800);
         },
         h_pointerMove:function(pointerEvent){
             if (this.isWrongPointer(pointerEvent)){
@@ -186,10 +192,11 @@
                 return true;
             }
             this.data.pointerId = undefined; /* reset pointer */
-            if (this.dist(pointerEvent) < 20)
-                return true;
             if (this.detectActionTimerId !== undefined)
+            {
                 clearTimeout(this.detectActionTimerId);
+                this.data.clickCallback();
+            }
         },
         dist:function(pointerEvent){
             return Math.sqrt(Math.pow(pointerEvent.clientX-this.data.x,2) + Math.pow(pointerEvent.clientY-this.data.y,2));
@@ -199,8 +206,9 @@
         },
         trigger:function(startEvent){
             // this.data.element.dispatchEvent( new Event("contextmenu",{/* ..insert parameters if needed...*/}) );
-            if (typeof this.data.callback === "function") {
-                this.data.callback(startEvent);
+            if (typeof this.data.ctxMenuCallback === "function") {
+                this.data.ctxMenuCallback(startEvent);
+                this.detectActionTimerId = undefined;
             }
         }
     },{});
@@ -219,9 +227,9 @@
             this.name=opts.name;
             this.baseElement=this.static.generateModel(opts);
         }
-        this.baseElement.querySelector('.time').addEventListener('click',this.h_click.bind(this),{'signal':this.signal()});
+        // this.baseElement.querySelector('.time').addEventListener('click',this.h_click.bind(this),{'signal':this.signal()});
         this.baseElement.querySelector('.time').addEventListener('contextmenu',this.h_reset.bind(this),{'signal':this.signal()});
-        new API.ContextMenuEvent(this.baseElement.querySelector('.time'),this.h_reset.bind(this),this.signal());
+        this.ctxmenu = new API.ContextMenuEvent(this.baseElement.querySelector('.time'),this.signal(),this.h_reset.bind(this),this.h_click.bind(this));
         this.baseElement.querySelector('.rename').addEventListener('click',this.h_editName.bind(this),{'signal':this.signal()});
         this.update();
         this.display(true);
@@ -621,6 +629,7 @@
 
     defineClass(API, API.Abortable, function Timers(){
         this.super();
+        this.timers = [];
         if("addEventListener" in ctx){
             let R=this;
             ctx.addEventListener("beforeunload",function(){R.save();},{'signal':this.signal()});
@@ -644,7 +653,7 @@
         // page specific
         this.list = doc.querySelector(".list");
         this.updateId = setInterval(this.renderWatches.bind(this),500);
-        new API.Fix_Selection(); // FIX #8
+        this._fix_selection = new API.Fix_Selection(); // FIX #8
         this.draggable = new API.Draggable(this.list,'.item','.rename',(function(targetIndex, splitIndex){
             /* future improvement: tI is not needed twice */
             let tI=-1;
@@ -684,7 +693,6 @@
         }).bind(this));
     },{
         loaded:false,
-        timers:[],
         renderWatches:function(){
             this.timers.forEach(function(e){
                 e.display(false);
@@ -739,8 +747,8 @@
             );
             this.log('Data Saved');
         },
-        load:function(){
-            if(this.loaded){return;}
+        load:function(force){
+            if(this.loaded&&force!==true){return;}
             this.loaded=true;
             this.log('Loading Data...');
             let data=JSON.parse(localStorage.getItem(this.static.global_storage_key)||'[]');
