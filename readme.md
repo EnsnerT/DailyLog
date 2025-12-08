@@ -35,7 +35,10 @@ Special Features:
 ### Reset a Timer
 You can Reset the Time from a Timer, **while the timer is not running**:  
 - on Desktop by **Rightclicking** the time.  
-- on Mobile by **Pressing and Holding (for an moderate duration)** the time.  
+- on Mobile by **Pressing and Holding (for an moderate duration)** the time (was also added to Desktop).  
+
+### Move a Timer
+You can Move Timers around by draging the "Edit" Button up or down. 
 
 ### Removing a Timer
 > Timers can only be remove, if they are Empty (aka the time was [reset](#reset-a-timer) or never ran in the first place). This applies to single Removal and Global Removal.  
@@ -62,3 +65,4 @@ The Button "Remove All" at the Top of the Page can remove all **Empty** Timers a
 <sup>[1]</sup>: "persistent" does not apply, when opening the Same Page in *different* Browsers or using the *Inkognito (Private) Window*, since they will not **store** or **share the localstorage with eachother**.  
 
 > Note : The Page can behave unexpectedly when opening and **using multiple** instances of the page / tool in the same environment (the same localstorage)
+
