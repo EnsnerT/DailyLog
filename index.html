@@ -6,15 +6,11 @@
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <title>Daily Log</title>
         <style>
-            /*
-            * { outline: solid 0.10rem rgba(255, 113, 113, 0.5); }
-            *:hover {
-                outline: solid 0.10rem rgba(166, 255, 57, 0.5);
-            }
-            */
 
             :root {
                 /* CSS - Color */
+
+                --b-bg:  #222222; /* Body */
                 --t-bg:  #d3d3d3; /* Tasks */
                 --tb-bg: #efefef; /* Tasks Button */
                 --m-bg:  #a9a9a9; /* Menu */
@@ -38,7 +34,7 @@
             }
             body {
                 margin: 0;
-                background: #222;
+                background: var(--b-bg);
             }
             button, input[type=button] {
                 cursor: pointer;
@@ -63,7 +59,7 @@
                 overflow: hidden;
                 flex-wrap: nowrap;
                 flex-direction: row;
-                border: 0 transparent;
+                border: 1px solid var(--b-bg);
                 transition: height .2s, margin .2s, opacity .2s;
                 opacity: 1;
                 border-radius: 10px;
@@ -190,12 +186,10 @@
                 overflow: hidden;
             }
             div.menu > button {
-                border-top: 0px transparent;
-                border-right: 0px transparent;
-                border-bottom: 0px transparent;
-                border-left-color: black;
-                border-left-style: outset;
-                border-left-width: 1px;
+                border-top: 1px solid transparent;
+                border-right: 1px solid transparent;
+                border-bottom: 1px solid transparent;
+                border-left: 1px outset var(--b-bg);
                 background: var(--mb-bg);
                 font-size: 18px;
                 /* height:40px; */
@@ -204,10 +198,9 @@
                 cursor: pointer;
             }
             div.menu > button:first-child {
-                
                 border-top-left-radius: 10px;
                 border-bottom-left-radius: 10px;
-                border-left: 0px transparent;
+                border-left-color: transparent;
             }
             /*#endregion Menu */
 
@@ -322,6 +315,10 @@
                 border-radius: 20px;
             }
 
+            div.menu > button:first-child {
+                border-top-left-radius: 20px;
+                border-bottom-left-radius: 20px;
+            }
             div.menu > button {
                 font-size: unset;
                 padding: 20px;
@@ -330,6 +327,7 @@
             div.popup > .box {
                 display: inline-flex;
                 flex-direction: column;
+                border: 1px solid transparent;
             }
             div.popup > .box > .action_buttons {
                 display:flex;
@@ -344,6 +342,7 @@
             div.popup > .box > .action_buttons > input[type=button] {
                 padding: 10px;
                 min-width: 30px;
+                border: 1px solid transparent;
             }
 
             @media only screen and (max-width: 750px){
@@ -360,6 +359,47 @@
                 }
             }
             /*#endregion Mobile View */
+
+            /*#region Accessibilty */
+            
+            .list .item > div > button:first-child {
+                border-top-left-radius: 20px;
+            }
+            .list .item > div > button:last-child {
+                border-top-right-radius: 20px;
+            }
+            .list .item > div > button:not(:first-child) {
+                border-left-width: 1px;
+            }
+            .list .item > div > button:not(:last-child) {
+                border-right-width: 1px;
+            }
+            button.button-run {
+                outline: 3px dashed transparent;
+                outline-offset: -3px;
+            }
+
+            button:focus-visible, input[type=button]:focus-visible {
+                outline: 3px solid var(--b-bg);
+                outline-offset: -8px;
+            }
+            @media only screen and (max-width: 750px){ /* Mobile - */
+                .list .item > div > button {
+                    border-bottom-width: 1px;
+                    border-bottom-left-radius: 0;
+                    border-bottom-right-radius: 0;
+                }
+            }
+            @media only screen and (min-width: 750px){ /* Tablet + */
+                .list .item > div > button:first-child {
+                    border-bottom-left-radius: 20px;
+                }
+                .list .item > div > button:last-child {
+                    border-bottom-right-radius: 20px;
+                }
+            }
+
+            /*#endregion Accessibilty */
 
         </style>
     </head>

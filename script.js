@@ -1,5 +1,5 @@
 /**
- * @version 1.4 (28.11.2025)
+ * @version 1.5 (09.03.2026)
  * @author ensnerT (2025) https://github.com/EnsnerT
  * */
 (function (ctx,doc){
@@ -16,9 +16,14 @@
     {
         API.i18n = {
             'de': {
+                'page.title': 'Tägliche Zeiten', // maybe better name
                 'watch.name.new': 'Neuer Name',
                 'watch.name.save': 'Speichern',
                 'watch.name.cancel': 'Abbrechen',
+                'watch.aria.stateRunning':'Läuft',
+                'watch.aria.statePaused':'Pausiert',
+                'watch.aria.state':'{0}, Zeitgeber, {1}',
+                'watch.aria.shortcut':', Taste \'{0}\' Drücken um aktuelle Zeit zu lesen',
                 'watch.delete.title': 'Löschen?',
                 'watch.delete.confirm': 'Ja',
                 'watch.delete.cancel': 'Nein',
@@ -27,9 +32,14 @@
                 'menu.button.removeAll': 'Alle Löschen'
             },
             'en': {
+                'page.title': 'Daily Log',
                 'watch.name.new': 'New Name',
                 'watch.name.save': 'Save',
                 'watch.name.cancel': 'Cancel',
+                'watch.aria.stateRunning':'Running',
+                'watch.aria.statePaused':'Paused',
+                'watch.aria.state':'{0}, Timer, {1}',
+                'watch.aria.shortcut':', Press \'{0}\' to get the current time',
                 'watch.delete.title': 'Delete?',
                 'watch.delete.confirm': 'Yes',
                 'watch.delete.cancel': 'No',
@@ -50,14 +60,20 @@
             return false;
         }
 
+        API.t = function (key) {
+            return (API.i18n[API.lang]||{[key]:key})[key];
+        }
         if (typeof ctx.navigator !== 'undefined' && typeof ctx.navigator.languages !== 'undefined') {
             let validLangTags = new Array(ctx.navigator.languages).flatMap(identity).map(lanugageValid).filter(identity);
             if (validLangTags.length > 0) {
                 API.lang = validLangTags[0];
             }
+            doc.documentElement.lang = API.lang;
+            doc.documentElement.querySelector('head title').innerText = API.t('page.title');
         }
-        API.t = function (key) {
-            return (API.i18n[API.lang]||{[key]:key})[key];
+        /** @param {Array<String>} args */
+        API.tv = function(key,args){
+            return API.t(key).replaceAll(/\{(\d+)\}/g,function(full,id){return args[id-0];});
         }
     }
 
@@ -231,6 +247,8 @@
         this.baseElement.querySelector('.time').addEventListener('contextmenu',this.h_reset.bind(this),{'signal':this.signal()});
         this.ctxmenu = new API.ContextMenuEvent(this.baseElement.querySelector('.time'),this.signal(),this.h_reset.bind(this),this.h_click.bind(this));
         this.baseElement.querySelector('.rename').addEventListener('click',this.h_editName.bind(this),{'signal':this.signal()});
+        this.ariaHelper = new API.AriaHelper(this.baseElement.querySelector('.time'), this);
+        
         this.update();
         this.display(true);
     },{
@@ -270,16 +288,14 @@
         },
         update:function(){
             this.baseElement.querySelector(".time").classList.value="time button-"+(this.mode===this.static.MODES.RUN?'run':'stop');
+            this.ariaHelper.update();
         },
-        display:function(first){
-            if(typeof first !== 'boolean') {
-                first = false;
-            }
+        getTime:function(){
             let zero = new Date('2000-01-01 00:00:00');
             zero=zero.getTime()-zero.getTimezoneOffset(); /* makes the display move along timezones */
             function ltrim(tx){tx=tx.toString();if(tx.length===1){return "0"+tx}else{return tx;}}
-            let timeValue=undefined;
-            if(this.mode===this.static.MODES.IDLE&&first){
+            let timeValue="00:00:00";
+            if(this.mode===this.static.MODES.IDLE){
                 if(typeof this.start==='undefined' || this.start === 0){
                     timeValue="00:00:00";
                 } else {
@@ -290,6 +306,25 @@
                 let calc=new Date(Date.now()-this.start+zero);
                 timeValue=new Array(calc.getHours(),calc.getMinutes(),calc.getSeconds()).map(ltrim).join(":");
             }
+            return timeValue;
+        },
+        getAriaText:function(detail){
+            if (detail === true) {
+                return this.getTime();
+            } else {
+                var text = API.tv('watch.aria.state',[this.name,API.tv('watch.aria.state'+(this.mode===this.static.MODES.IDLE?'Paused':'Running'))]);
+                if (this.mode===this.static.MODES.IDLE){text+=", "+this.getTime();}else{text+=API.tv('watch.aria.shortcut','k');}
+                return text;
+            }
+        },
+        display:function(first){
+            if(typeof first !== 'boolean') {
+                first = false;
+            }
+            if (this.mode===this.static.MODES.IDLE&&!first){
+                return;
+            }
+            var timeValue = this.getTime();
             if(typeof timeValue!=='undefined'){
                 this.baseElement.querySelector(".time").innerText=timeValue;
             }
@@ -358,8 +393,8 @@
         generateModel:function(data){
             return _element('div', {'class': 'item'}, [
                 _element('div', {}, [
-                    _element('button', {'class': 'time'}, [_text('00:00:00')]),
-                    _element('span', {'class': 'name'}, [_text(data.name)]),
+                    _element('button', {'class': 'time' }, [_text('00:00:00')]),
+                    _element('span', {'class': 'name' }, [_text(data.name)]),
                     _element('input', {'type': 'hidden', 'value': data.id}, []),
                     _element('button', {'class': 'rename'}, [_text(API.t('watch.edit.title'))]),
                 ]),
@@ -625,6 +660,43 @@
         handle_cancel:function(pointerEvent){}
     },{
 
+    });
+
+    defineClass(API, API.Abortable, function AriaHelper(element_region, timer){
+        this.super();
+        this.element_region = element_region;
+        this.timer = timer;
+        this.active();
+    },{
+        update:function(){
+            this.element_region.setAttribute("aria-label",this.timer.getAriaText(false));
+        },
+        active:function(){
+            this.update();
+            this.element_region.addEventListener('keydown',this.handler.bind(this),{'signal':this.signal()});
+        },
+        handler:function(kb){
+            if (kb.key === 'k' && !kb.ctrlKey && !kb.altKey && !kb.shiftKey){
+                kb.preventDefault();
+                this.static.queueNotification(this.timer.getAriaText(true));
+            }
+        },
+    },{
+        queueNotification:function(text){
+            var node = _element('span',{},[_text(text)]);
+            const parent = this.findElement();
+            while (parent.childNodes.length)
+                parent.childNodes[0].remove();
+            parent.appendChild(node);
+        },
+        findElement:function(){
+            const e = doc.body.querySelector("#ariaNotifier");
+            if(e)
+                return e;
+            const new_e= _element('div',{'id':'ariaNotifier','style':'position:absolute;top:-1000vh;left:-1000vw;z-index:1;','aria-live':'assertive','role':'alert','aria-relevant':'additions'});
+            doc.body.prepend(new_e);
+            return new_e;
+        },
     });
 
     defineClass(API, API.Abortable, function Timers(){
